@@ -1,8 +1,8 @@
 name: Build Windows EXE
 
+# Змінюємо тригер запуску на ручний
 on:
-  push:
-    branches: [ main, master ] # Збірка запускатиметься при пуші в ці гілки
+  workflow_dispatch:
 
 jobs:
   build:
