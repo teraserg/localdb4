@@ -1,11 +1,24 @@
-import sys
 import os
-from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
-                             QHBoxLayout, QLineEdit, QPushButton, QListWidget, 
-                             QLabel, QFileDialog, QMessageBox)
-from PyQt6.QtGui import QPixmap
+import sys
+
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QPixmap
+from PyQt6.QtWidgets import (
+    QApplication,
+    QFileDialog,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QListWidget,
+    QMainWindow,
+    QMessageBox,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
+
 import database as db
+
 
 class HRApp(QMainWindow):
     def __init__(self):
