@@ -1,0 +1,33 @@
+name: Build Windows EXE
+
+on:
+  push:
+    branches: [ main, master ] # Збірка запускатиметься при пуші в ці гілки
+
+jobs:
+  build:
+    runs-on: windows-latest # Запуск на чистому офіційному сервері Windows 2022/2025
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11' # Використовуємо сучасний і стабільний Python
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install PyQt6 pyinstaller
+
+    - name: Run PyInstaller
+      run: |
+        pyinstaller --onedir --windowed --name="HR_System" main.py
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: HR_System_Windows
+        path: dist/HR_System/
