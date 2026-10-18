@@ -24,7 +24,7 @@ jobs:
 
     - name: Run PyInstaller
       run: |
-        pyinstaller --onedir --windowed --name="HR_System" main.py
+        pyinstaller --onedir --windowed --name="HR_System" app.py
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
