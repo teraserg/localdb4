@@ -19,22 +19,65 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 
-from PyQt6.QtCore import (QBuffer, QByteArray, QDate, QIODevice, QSettings,
-                          QSortFilterProxyModel, Qt, QTimer, QUrl)
-from PyQt6.QtGui import (QAction, QActionGroup, QColor, QDesktopServices, QImageReader,
-                         QKeySequence, QPalette, QPixmap, QStandardItem,
-                         QStandardItemModel)
+from PyQt6.QtCore import (
+    QBuffer,
+    QByteArray,
+    QDate,
+    QIODevice,
+    QSettings,
+    QSortFilterProxyModel,
+    Qt,
+    QTimer,
+    QUrl,
+)
+from PyQt6.QtGui import (
+    QAction,
+    QActionGroup,
+    QColor,
+    QDesktopServices,
+    QImageReader,
+    QKeySequence,
+    QPalette,
+    QPixmap,
+    QStandardItem,
+    QStandardItemModel,
+)
 from PyQt6.QtWidgets import (
-    QAbstractItemView, QApplication, QComboBox, QDateEdit, QDialog, QFileDialog,
-    QFrame, QInputDialog,
-    QFormLayout, QHBoxLayout, QHeaderView, QLabel, QLineEdit, QMainWindow, QMenu,
-    QMessageBox, QPlainTextEdit, QPushButton, QScrollArea, QSizePolicy,
-    QStackedWidget, QTableView, QTableWidget, QTableWidgetItem, QTabWidget,
-    QToolBar, QToolButton, QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget,
+    QAbstractItemView,
+    QApplication,
+    QComboBox,
+    QDateEdit,
+    QDialog,
+    QFileDialog,
+    QFormLayout,
+    QFrame,
+    QHBoxLayout,
+    QHeaderView,
+    QInputDialog,
+    QLabel,
+    QLineEdit,
+    QMainWindow,
+    QMenu,
+    QMessageBox,
+    QPlainTextEdit,
+    QPushButton,
+    QScrollArea,
+    QSizePolicy,
+    QStackedWidget,
+    QTableView,
+    QTableWidget,
+    QTableWidgetItem,
+    QTabWidget,
+    QToolBar,
+    QToolButton,
+    QTreeWidget,
+    QTreeWidgetItem,
+    QVBoxLayout,
+    QWidget,
 )
 
 import paths
-from db import Database, PERSON_FIELDS, fmt_date
+from db import PERSON_FIELDS, Database, fmt_date
 
 RANKS = [
     "", "Солдат", "Старший солдат", "Молодший сержант", "Сержант",
@@ -1129,15 +1172,9 @@ def main():
     settings = QSettings("PersonnelApp", "Personnel")
     apply_theme(app, settings.value("dark", False, type=bool))
     paths.ensure_dirs()
-    moved = paths.migrate_legacy_files()   # стара база поруч із програмою -> app_data
     paths.clean_temp()
     window = MainWindow()
     window.show()
-    if moved:
-        QTimer.singleShot(400, lambda: QMessageBox.information(
-            window, "Файли перенесено",
-            f"Дані програми тепер зберігаються в папці:\n{paths.DATA_DIR}\n\n"
-            "Перенесено: " + ", ".join(moved)))
     sys.exit(app.exec())
 
 
