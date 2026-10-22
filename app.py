@@ -865,10 +865,9 @@ def apply_theme(app: QApplication, dark: bool):
 class MainWindow(QMainWindow):
     COLUMNS = ("ПІБ", "Звання", "Посада", "Підрозділ", "Статус", "Місце перебування",
                "Особовий №", "Безпосередній командир")
-    WIDTHS = (250, 140, 170, 150, 110, 170, 100, 230)
-    TREE_COLUMNS = ("Підрозділ / ПІБ", "Звання", "Посада", "Статус", "Місце перебування",
-                    "Особовий №", "Командир")
-    TREE_WIDTHS = (330, 150, 180, 120, 170, 110, 260)
+    COLUMNS = ["ПІБ", "Звання", "Посада", "Підрозділ", "Статус", "Місце перебування",
+               "Особовий №", "Безпосередній командир"]
+    WIDTHS = [250, 140, 170, 150, 110, 170, 100, 230]
 
     def __init__(self, db_path=None):
         super().__init__()
@@ -992,6 +991,17 @@ class MainWindow(QMainWindow):
         focus.triggered.connect(lambda: (self.search.setFocus(), self.search.selectAll()))
         self.addAction(focus)
 
+        # більший шрифт кнопок і поля пошуку на панелі інструментів
+        font = bar.font()
+        size = font.pointSizeF()
+        font.setPointSizeF((size if size > 0 else 10) + TOOLBAR_FONT_DELTA)
+        bar.setFont(font)
+        self.search.setFont(font)
+        for act in bar.actions():
+            btn = bar.widgetForAction(act)
+            if btn is not None:
+                btn.setFont(font)
+
     def _toggle_theme(self, dark: bool):
         self.settings.setValue("dark", dark)
         apply_theme(QApplication.instance(), dark)
@@ -1074,6 +1084,17 @@ class MainWindow(QMainWindow):
             for r in orphans:
                 add_person(top, r)
             top.setExpanded(bool(query) or None in expanded)
+
+        self._apply_tree_row_height()
+
+    def _apply_tree_row_height(self):
+        """Вищі рядки дерева (при uniformRowHeights береться висота першого рядка)."""
+        hint = QSize(0, TREE_ROW_HEIGHT)
+        for i in range(self.tree.topLevelItemCount()):
+            top = self.tree.topLevelItem(i)
+            top.setSizeHint(0, hint)
+            for j in range(top.childCount()):
+                top.child(j).setSizeHint(0, hint)
 
     def _current(self):
         """(вид, id) вибраного рядка: ('person'|'unit'|'none'|None, id|None)."""
