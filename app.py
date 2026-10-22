@@ -104,6 +104,7 @@ FORM_FIELDS = [
     ("unit_id", "Підрозділ", "unit", None),
     ("commander_id", "Безпосередній командир", "person", None),
     ("status", "Статус", "combo", STATUSES),
+    ("location", "Місце перебування", "line", None),
     ("enlist_date", "Дата призову / початку служби", "date", None),
     ("phone", "Телефон", "line", None),
     ("address", "Адреса проживання", "text", None),
@@ -117,7 +118,7 @@ EMPTY_DATE = QDate(1900, 1, 1)  # мінімальна дата = «не вка�
 
 EXPORT_KEYS = [
     "id", "last_name", "first_name", "middle_name", "birth_date", "personal_number",
-    "rank", "position", "unit_name", "status", "enlist_date", "phone", "address",
+    "rank", "position", "unit_name", "status", "location", "enlist_date", "phone", "address",
     "education", "family", "commander_name", "notes", "unit_id", "commander_id",
 ]
 
@@ -166,12 +167,37 @@ def cleanup_temp():
     _TEMP_DIRS.clear()
 
 
+class _NoWheel:
+    """Домішка: колесо миші змінює значення лише коли віджет у фокусі (після кліку
+    чи Tab). Інакше подію ігноруємо — вона йде батьківському віджету, і форма просто
+    прокручується. Без цього випадні списки й дати змінюються самі, коли курсор
+    опиняється над ними під час прокрутки."""
+
+    def _init_wheel_guard(self):
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)   # не брати фокус від колеса
+
+    def wheelEvent(self, event):
+        event.ignore()
+
+
+class SafeComboBox(_NoWheel, QComboBox):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._init_wheel_guard()
+
+
+class SafeDateEdit(_NoWheel, QDateEdit):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._init_wheel_guard()
+
+
 class DateField(QWidget):
     """Поле дати з календарем і кнопкою очищення. Порожнє значення = ''."""
 
     def __init__(self, today=False, parent=None):
         super().__init__(parent)
-        self.edit = QDateEdit()
+        self.edit = SafeDateEdit()
         self.edit.setCalendarPopup(True)
         self.edit.setDisplayFormat("dd.MM.yyyy")
         self.edit.setMinimumDate(EMPTY_DATE)
@@ -195,7 +221,7 @@ class DateField(QWidget):
         self.edit.setDate(d if d.isValid() else EMPTY_DATE)
 
 
-class ChoiceBox(QComboBox):
+class ChoiceBox(SafeComboBox):
     """Вибір зі списку з пошуком під час набору. Значення — id (UUID) або None."""
 
     NONE_LABEL = "— не вказано —"
@@ -314,7 +340,7 @@ class PersonDialog(QDialog):
             if kind == "line":
                 w = QLineEdit()
             elif kind == "combo":
-                w = QComboBox()
+                w = SafeComboBox()
                 w.setEditable(True)
                 w.addItems(values)
             elif kind == "date":
@@ -425,7 +451,7 @@ class PersonDialog(QDialog):
         panel = QHBoxLayout(self.ev_panel)
         panel.setContentsMargins(0, 0, 0, 0)
         self.ev_date = DateField(today=True)
-        self.ev_type = QComboBox()
+        self.ev_type = SafeComboBox()
         self.ev_type.setEditable(True)
         self.ev_type.addItems(EVENT_TYPES)
         self.ev_desc = QLineEdit()
@@ -566,7 +592,7 @@ class PersonDialog(QDialog):
 
         add_row = QHBoxLayout()
         add_row.addWidget(QLabel("Тип нових документів:"))
-        self.doc_type = QComboBox()
+        self.doc_type = SafeComboBox()
         self.doc_type.setEditable(True)
         self.doc_type.addItems(DOC_TYPES)
         self.doc_type.setCurrentText("Інше")
@@ -837,11 +863,12 @@ def apply_theme(app: QApplication, dark: bool):
 
 
 class MainWindow(QMainWindow):
-    COLUMNS = ["ПІБ", "Звання", "Посада", "Підрозділ", "Статус", "Особовий №",
-               "Безпосередній командир"]
-    WIDTHS = [250, 140, 170, 150, 110, 100, 230]
-    TREE_COLUMNS = ["Підрозділ / ПІБ", "Звання", "Посада", "Статус", "Особовий №", "Командир"]
-    TREE_WIDTHS = [330, 150, 180, 120, 110, 260]
+    COLUMNS = ("ПІБ", "Звання", "Посада", "Підрозділ", "Статус", "Місце перебування",
+               "Особовий №", "Безпосередній командир")
+    WIDTHS = (250, 140, 170, 150, 110, 170, 100, 230)
+    TREE_COLUMNS = ("Підрозділ / ПІБ", "Звання", "Посада", "Статус", "Місце перебування",
+                    "Особовий №", "Командир")
+    TREE_WIDTHS = (330, 150, 180, 120, 170, 110, 260)
 
     def __init__(self, db_path=None):
         super().__init__()
@@ -993,7 +1020,7 @@ class MainWindow(QMainWindow):
         for r in rows:
             items = [QStandardItem(str(v)) for v in (
                 self._full_name(r), r["rank"], r["position"], r["unit_name"],
-                r["status"], r["personal_number"], r["commander_name"])]
+                r["status"], r["location"], r["personal_number"], r["commander_name"])]
             items[0].setData(r["id"], Qt.ItemDataRole.UserRole)
             self.model.appendRow(items)
 
@@ -1018,7 +1045,7 @@ class MainWindow(QMainWindow):
         def add_person(parent, r, is_commander=False):
             child = QTreeWidgetItem([
                 self._full_name(r), r["rank"], r["position"], r["status"],
-                r["personal_number"], r["commander_name"]])
+                r["location"], r["personal_number"], r["commander_name"]])
             child.setData(0, Qt.ItemDataRole.UserRole, ["person", r["id"]])
             if is_commander:
                 bold(child)
@@ -1030,7 +1057,7 @@ class MainWindow(QMainWindow):
                 continue
             count = len(members) if query else u["member_count"]
             cmd = f"Командир: {u['commander_name']}" if u["commander_name"] else ""
-            top = QTreeWidgetItem([f"{u['name']} ({count})", "", "", "", "", cmd])
+            top = QTreeWidgetItem([f"{u['name']} ({count})", "", "", "", "", "", cmd])
             top.setData(0, Qt.ItemDataRole.UserRole, ["unit", u["id"]])
             bold(top)
             self.tree.addTopLevelItem(top)
@@ -1040,7 +1067,7 @@ class MainWindow(QMainWindow):
 
         orphans = by_unit.get(None, [])
         if orphans:
-            top = QTreeWidgetItem([f"Без підрозділу ({len(orphans)})", "", "", "", "", ""])
+            top = QTreeWidgetItem([f"Без підрозділу ({len(orphans)})", "", "", "", "", "", ""])
             top.setData(0, Qt.ItemDataRole.UserRole, ["none", None])
             bold(top)
             self.tree.addTopLevelItem(top)
@@ -1172,9 +1199,15 @@ def main():
     settings = QSettings("PersonnelApp", "Personnel")
     apply_theme(app, settings.value("dark", False, type=bool))
     paths.ensure_dirs()
+    moved = paths.migrate_legacy_files()   # стара база поруч із програмою -> app_data
     paths.clean_temp()
     window = MainWindow()
     window.show()
+    if moved:
+        QTimer.singleShot(400, lambda: QMessageBox.information(
+            window, "Файли перенесено",
+            f"Дані програми тепер зберігаються в папці:\n{paths.DATA_DIR}\n\n"
+            "Перенесено: " + ", ".join(moved)))
     sys.exit(app.exec())
 
 
