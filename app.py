@@ -25,6 +25,7 @@ from PyQt6.QtCore import (
     QDate,
     QIODevice,
     QSettings,
+    QSize,
     QSortFilterProxyModel,
     Qt,
     QTimer,
@@ -115,6 +116,9 @@ FORM_FIELDS = [
 
 DATE_FIELDS = {"birth_date", "enlist_date"}
 EMPTY_DATE = QDate(1900, 1, 1)  # мінімальна дата = «не вказано»
+
+TREE_ROW_HEIGHT = 36      # висота рядків у режимі «За підрозділами», px
+TOOLBAR_FONT_DELTA = 1    # на скільки пунктів більший шрифт панелі інструментів
 
 EXPORT_KEYS = [
     "id", "last_name", "first_name", "middle_name", "birth_date", "personal_number",
@@ -863,11 +867,12 @@ def apply_theme(app: QApplication, dark: bool):
 
 
 class MainWindow(QMainWindow):
-    COLUMNS = ("ПІБ", "Звання", "Посада", "Підрозділ", "Статус", "Місце перебування",
-               "Особовий №", "Безпосередній командир")
     COLUMNS = ["ПІБ", "Звання", "Посада", "Підрозділ", "Статус", "Місце перебування",
                "Особовий №", "Безпосередній командир"]
     WIDTHS = [250, 140, 170, 150, 110, 170, 100, 230]
+    TREE_COLUMNS = ["Підрозділ / ПІБ", "Звання", "Посада", "Статус", "Місце перебування",
+                    "Особовий №", "Командир"]
+    TREE_WIDTHS = [330, 150, 180, 120, 170, 110, 260]
 
     def __init__(self, db_path=None):
         super().__init__()
