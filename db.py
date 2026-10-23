@@ -12,7 +12,6 @@
 import sqlite3
 import uuid
 from datetime import datetime
-from pathlib import Path
 
 PERSON_FIELDS = [
     "last_name", "first_name", "middle_name", "birth_date", "personal_number",
@@ -47,8 +46,8 @@ SCHEMA = (
         commander_id    TEXT REFERENCES person(id) ON DELETE SET NULL,
         notes           TEXT NOT NULL DEFAULT ''
     )""",
-    "CREATE UNIQUE INDEX IF NOT EXISTS idx_person_number "
-    "ON person(personal_number) WHERE personal_number <> ''",
+    """CREATE UNIQUE INDEX IF NOT EXISTS idx_person_number 
+    ON person(personal_number) WHERE personal_number <> '' """,
     "CREATE INDEX IF NOT EXISTS idx_person_unit ON person(unit_id)",
     "CREATE INDEX IF NOT EXISTS idx_person_commander ON person(commander_id)",
     """CREATE TABLE IF NOT EXISTS event (
