@@ -123,91 +123,12 @@ class Database:
         self.conn.row_factory = sqlite3.Row
         # SQLite LIKE не враховує регістр для кирилиці, тому власна функція
         self.conn.create_function("lower_u", 1, lambda s: (s or "").lower())
-        if self._is_legacy():
-            self._migrate_legacy(path)
-        self.conn.execute("PRAGMA foreign_keys = ON")
         for stmt in SCHEMA:
             self.conn.execute(stmt)
-        self._ensure_columns()
         self.conn.commit()
 
     def close(self):
         self.conn.close()
-
-    def _ensure_columns(self):
-        """Додає колонки, яких немає в базі, створеній старішою версією програми."""
-        have = {r["name"] for r in self.conn.execute("PRAGMA table_info(person)")}
-        if "location" not in have:
-            self.conn.execute(
-                "ALTER TABLE person ADD COLUMN location TEXT NOT NULL DEFAULT ''")
-
-    # ---------- міграція зі старої схеми ----------
-    def _is_legacy(self) -> bool:
-        cols = {r["name"]: (r["type"] or "").upper()
-                for r in self.conn.execute("PRAGMA table_info(person)")}
-        return bool(cols) and cols.get("id") == "INTEGER"
-
-    def _migrate_legacy(self, path):
-        if str(path) != ":memory:":
-            p = Path(path)
-            backup_dir = p.parent / "backups"   # app_data/backups
-            backup_dir.mkdir(parents=True, exist_ok=True)
-            backup = backup_dir / (
-                f"{p.stem}_before_uuid_{datetime.now():%Y%m%d_%H%M%S}{p.suffix}")
-            dest = sqlite3.connect(backup)
-            self.conn.backup(dest)
-            dest.close()
-            self.migration_backup = str(backup)
-
-        c = self.conn
-        c.execute("PRAGMA foreign_keys = OFF")
-        c.execute("BEGIN")
-        try:
-            c.execute("DROP INDEX IF EXISTS idx_person_number")
-            c.execute("DROP INDEX IF EXISTS idx_event_person")
-            c.execute("ALTER TABLE person RENAME TO person_old")
-            c.execute("ALTER TABLE event RENAME TO event_old")
-            for stmt in SCHEMA:
-                c.execute(stmt)
-
-            unit_ids = {}
-            names = c.execute(
-                "SELECT DISTINCT TRIM(unit) AS name FROM person_old "
-                "WHERE TRIM(unit) <> '' ORDER BY name").fetchall()
-            for r in names:
-                uid = new_id()
-                unit_ids[r["name"]] = uid
-                c.execute("INSERT INTO unit (id, name) VALUES (?, ?)", (uid, r["name"]))
-
-            id_map = {}
-            for r in c.execute("SELECT * FROM person_old ORDER BY id").fetchall():
-                pid = new_id()
-                id_map[r["id"]] = pid
-                c.execute(
-                    """INSERT INTO person (id, last_name, first_name, middle_name,
-                           birth_date, personal_number, rank, position, unit_id, status,
-                           enlist_date, phone, address, education, family,
-                           commander_id, notes)
-                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NULL,?)""",
-                    (pid, r["last_name"], r["first_name"], r["middle_name"],
-                     r["birth_date"], r["personal_number"], r["rank"], r["position"],
-                     unit_ids.get((r["unit"] or "").strip()), r["status"],
-                     r["enlist_date"], r["phone"], r["address"], r["education"],
-                     r["family"], r["notes"]))
-
-            for r in c.execute("SELECT * FROM event_old ORDER BY id").fetchall():
-                if r["person_id"] in id_map:
-                    c.execute(
-                        "INSERT INTO event (person_id, date, type, description) "
-                        "VALUES (?, ?, ?, ?)",
-                        (id_map[r["person_id"]], r["date"], r["type"], r["description"]))
-
-            c.execute("DROP TABLE event_old")
-            c.execute("DROP TABLE person_old")
-            c.execute("COMMIT")
-        except Exception:
-            c.execute("ROLLBACK")
-            raise
 
     # ---------- особовий склад ----------
     def search(self, query: str = ""):
@@ -216,7 +137,7 @@ class Database:
         params = []
         if query:
             cols = ["p.last_name", "p.first_name", "p.middle_name", "p.personal_number",
-                    "p.rank", "p.position", "p.status", "p.location", "u.name"]
+                    "p.rank", "p.position", "p.status", "u.name"]
             sql += " WHERE " + " OR ".join(f"lower_u({c}) LIKE ?" for c in cols)
             params = [f"%{query}%"] * len(cols)
         sql += " ORDER BY lower_u(p.last_name), lower_u(p.first_name)"
@@ -229,7 +150,7 @@ class Database:
     def people_options(self, exclude_id=None):
         """Список [(id, підпис)] для вибору командира."""
         rows = self.conn.execute(
-            "SELECT id, last_name, first_name, middle_name, rank, personal_number "
+            "SELECT id, last_name, first_name, middle_name, rank "
             "FROM person ORDER BY lower_u(last_name), lower_u(first_name)").fetchall()
         out = []
         for r in rows:
@@ -237,8 +158,6 @@ class Database:
                 continue
             label = " ".join(x for x in (r["rank"], r["last_name"],
                                          r["first_name"], r["middle_name"]) if x)
-            if r["personal_number"]:
-                label += f" · {r['personal_number']}"
             out.append((r["id"], label))
         return out
 
